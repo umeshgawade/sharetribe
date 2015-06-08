@@ -62,7 +62,7 @@ module MarketplaceService::API
       Helper.create_community_customization!(community, marketplace_name, locale)
       Helper.create_category!("Default", community, locale)
       processes = Helper.create_processes!(community.id, payment_process)
-      shape = Helper.create_listing_shape!(community, p[:marketplace_type], payment_process)
+      shape = Helper.create_listing_shape!(community, p[:marketplace_type], processes)
 
       plan_level = p[:plan_level].or_else(CommunityPlan::FREE_PLAN)
       Helper.create_community_plan!(community, {plan_level: plan_level});

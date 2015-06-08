@@ -263,11 +263,7 @@ class Admin::ListingShapesController < ApplicationController
   end
 
   def process_summary
-    @process_summary ||= processes.reduce({}) { |info, process|
-      info[:preauthorize_available] = true if process[:process] == :preauthorize
-      info[:request_available] = true if process[:author_is_seller] == false
-      info
-    }
+    @process_summary ||= ProcessSummary.summarize(processes)
   end
 
   def processes
