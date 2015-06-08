@@ -16,12 +16,23 @@ Kassi::Application.configure do
 
   config.log_level = :debug
 
+  # Lograge config, adds params and event timestamp
+  config.lograge.enabled = true
+  config.lograge.custom_options = lambda do |event|
+    params = event.payload[:params].reject do |k|
+      ['controller', 'action'].include? k
+    end
+
+    {time: event.time,
+     params:  params }
+  end
+
   # Raise exceptions instead of rendering exception templates
   config.action_dispatch.show_exceptions = true
 
   # Disable request forgery protection in test environment
   config.action_controller.allow_forgery_protection    = true
-  
+
   config.action_controller.action_on_unpermitted_parameters = :raise
 
   # Tell Action Mailer not to deliver emails to the real world.

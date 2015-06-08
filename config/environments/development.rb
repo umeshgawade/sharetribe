@@ -15,6 +15,18 @@ Kassi::Application.configure do
   # Log error messages when you accidentally call methods on nil.
   config.whiny_nils = true
 
+  # Lograge config, adds params and event timestamp
+  config.lograge.enabled = true
+  config.lograge.custom_options = lambda do |event|
+    params = event.payload[:params].reject do |k|
+      ['controller', 'action'].include? k
+    end
+
+    {time: event.time,
+     params:  params }
+  end
+
+  config.lograge.formatter = Lograge::Formatters::Json.new
   # Show full error reports and disable caching
   config.consider_all_requests_local       = true
   config.action_controller.perform_caching = false

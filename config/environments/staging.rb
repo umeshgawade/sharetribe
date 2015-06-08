@@ -26,6 +26,18 @@ Kassi::Application.configure do
   # Use a different logger for distributed setups
   # config.logger = SyslogLogger.new
 
+  # Lograge config, adds params and event timestamp
+  config.lograge.enabled = true
+  config.lograge.custom_options = lambda do |event|
+    params = event.payload[:params].reject do |k|
+      ['controller', 'action'].include? k
+    end
+
+    {time: event.time,
+     params:  params }
+  end
+  config.lograge.formatter = Lograge::Formatters::Json.new
+
   # Use a different cache store in production
   config.cache_store = :dalli_store, (ENV["MEMCACHIER_SERVERS"] || "").split(","), {
     username: ENV["MEMCACHIER_USERNAME"],
