@@ -149,7 +149,10 @@ module PaypalService::API
     end
 
     def ensure_payment_authorized(community_id, payment_entity)
-      if payment_entity[:pending_reason] != :authorization
+      if payment_entity[:pending_reason] == :"payment-review"
+        Result::Error.new("Cannot complete authorization because the payment is pending for manual review by PayPal.",
+                          { error_code: :"payment-review", payment: payment_entity })
+      elsif payment_entity[:pending_reason] != :authorization
         authorize_payment(community_id, payment_entity)
       else
         Result::Success.new(payment_entity)
@@ -208,9 +211,9 @@ module PaypalService::API
 
     ## GET /payments/:community_id/:transaction_id
     def get_payment(community_id, transaction_id)
-      @lookup.with_payment(community_id, transaction_id) do |payment, m_acc|
-        Result::Success.new(DataTypes.create_payment(payment))
-      end
+      Maybe(PaymentStore.get(community_id, transaction_id))
+        .map { |payment| Result::Success.new(DataTypes.create_payment(payment)) }
+        .or_else { Result::Error.new("No matching payment for community_id: #{community_id} and transaction_id: #{transaction_id}.")}
     end
 
     ## POST /payments/:community_id/:transaction_id/void
@@ -250,7 +253,7 @@ module PaypalService::API
       TokenStore.get_all.each do |token|
         response = create(token.community_id, token.token)
 
-        if(!response[:success] && token.created_at < clean_time_limit)
+        if(!response[:success] && stop_retrying_token?(response, token.created_at, clean_time_limit))
           request_cancel(token.community_id, token.token)
         end
       end
@@ -262,6 +265,14 @@ module PaypalService::API
 
     # Reusable bits of the API operations
     #
+
+    def stop_retrying_token?(response, token_created_at, clean_time_limit)
+      if (token_created_at < clean_time_limit && (response[:data] == nil || response[:data][:error_code] != :"payment-review"))
+        true
+      else
+        false
+      end
+    end
 
     def create_payment(token)
       @lookup.with_merchant_account(token[:community_id], token) do |m_acc|

@@ -59,10 +59,13 @@ module PaypalService
     end
 
     def create_and_save_auth_payment(token)
+      # Allows test calls to inject payment-review response status
+      require_payment_review = token[:item_name] == "require-payment-review"
+
       payment = {
         authorization_date: Time.now,
         payment_status: "pending",
-        pending_reason: "authorization",
+        pending_reason: require_payment_review ? "payment-review" : "authorization",
         authorization_id: SecureRandom.uuid,
         authorization_total: token[:order_total],
         receiver_id: token[:receiver_id]
@@ -168,7 +171,7 @@ module PaypalService
                 checkout_status: "not_used_in_tests",
                 billing_agreement_accepted: !billing_agreement.nil?,
                 payer: token[:email],
-                payer_id: "payer_id",
+                payer_id: token[:item_name] != "payment-not-initiated" ? "payer_id" : nil,
                 order_total: token[:order_total]
               }
 

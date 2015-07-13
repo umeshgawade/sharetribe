@@ -65,7 +65,8 @@ module MarketplaceService::API
       shape = Helper.create_listing_shape!(community, p[:marketplace_type], payment_process)
 
       plan_level = p[:plan_level].or_else(CommunityPlan::FREE_PLAN)
-      Helper.create_community_plan!(community, {plan_level: plan_level});
+      expires_at = p[:expires_at].or_else(DateTime.now.change({ hour: 9, min: 0, sec: 0 }) + 31.days)
+      Helper.create_community_plan!(community, {plan_level: plan_level, expires_at: expires_at});
 
       return from_model(community)
     end
@@ -176,8 +177,8 @@ module MarketplaceService::API
       def create_community_plan!(community, options={})
         CommunityPlan.create({
           community_id: community.id,
-          plan_level:   Maybe(options[:plan_level]).or_else(0),
-          expires_at:   Maybe(options[:expires_at]).or_else(DateTime.now.change({ hour: 9, min: 0, sec: 0 }) + 31.days)
+          plan_level: options[:plan_level],
+          expires_at: options[:expires_at] == :never ? nil : options[:expires_at]
         })
       end
 
@@ -197,13 +198,7 @@ module MarketplaceService::API
       end
 
       def available_ident_based_on(initial_ident)
-
-        if initial_ident.blank?
-          initial_ident = "trial_site"
-        end
-
-        current_ident = initial_ident.to_url
-        current_ident = current_ident[0..29] #truncate to 30 chars or less
+        current_ident = Maybe(initial_ident).to_url[0..29].or_else("trial_site") #truncate to 30 chars or less
 
         # use basedomain as basis on new variations if current domain is not available
         base_ident = current_ident
